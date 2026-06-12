@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/palemoky/dns-optimizer/internal/dnsbench"
+	"github.com/palemoky/dnspick/internal/dnsbench"
 )
 
 func TestSystemDNSVerdict(t *testing.T) {

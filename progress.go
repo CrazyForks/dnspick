@@ -13,18 +13,18 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/term"
 
-	"github.com/palemoky/dns-optimizer/internal/dnsbench"
+	"github.com/palemoky/dnspick/internal/dnsbench"
 )
 
-// statusTracker 维护每个域名的测试进度，并以分类表格的形式实时展示：
-// 未开始显示 "-"，进行中显示百分比，完成显示 "✔"。
-// 在 TTY 下原地刷新；非 TTY（管道/CI）下降级为静态表 + 周期性百分比。
 // catGroup 是按分类聚合的一组域名（indices 指向 statusTracker.domains/done）。
 type catGroup struct {
 	name    string
 	indices []int
 }
 
+// statusTracker 维护每个域名的测试进度，并以分类表格的形式实时展示：
+// 未开始显示 "-"，进行中显示百分比，完成显示 "✔"。
+// 在 TTY 下原地刷新；非 TTY（管道/CI）下降级为静态表 + 周期性百分比。
 type statusTracker struct {
 	mu         sync.Mutex
 	domains    []dnsbench.Domain

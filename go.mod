@@ -1,4 +1,4 @@
-module github.com/palemoky/dns-optimizer
+module github.com/palemoky/dnspick
 
 go 1.25.0
 

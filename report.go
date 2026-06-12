@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/palemoky/dns-optimizer/internal/dnsbench"
+	"github.com/palemoky/dnspick/internal/dnsbench"
 )
 
 // printResultsTable 使用 tablewriter 打印漂亮的结果表格。

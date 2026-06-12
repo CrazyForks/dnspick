@@ -34,4 +34,4 @@ go.work.sum
 builds/
 
 # Locally built binary (matches the module/binary name)
-/dns-optimizer
+/dnspick

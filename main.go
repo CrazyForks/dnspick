@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/palemoky/dns-optimizer/internal/dnsbench"
+	"github.com/palemoky/dnspick/internal/dnsbench"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "dns-optimizer",
+	Use:   "dnspick",
 	Short: "一个跨平台的 DNS 选优工具",
 	Long:  `通过对一组常用域名进行并发测试，为您的网络环境推荐最快、最稳定的DNS服务器。`,
 	Run:   runBenchmark,

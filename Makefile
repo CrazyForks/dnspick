@@ -1,4 +1,4 @@
-APP_NAME := dns-optimizer
+APP_NAME := dnspick
 BUILD_DIR := builds
 LDFLAGS   := -s -w
 
