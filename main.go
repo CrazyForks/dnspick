@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/palemoky/dnspick/internal/buildinfo"
 	"github.com/palemoky/dnspick/internal/dnsbench"
 	"github.com/palemoky/dnspick/internal/ui"
+	"github.com/palemoky/dnspick/internal/updater"
 )
 
 var (
@@ -20,19 +23,55 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "dnspick",
-	Short: "一个跨平台的 DNS 选优工具",
-	Long:  `通过对一组常用域名进行并发测试，为您的网络环境推荐最快、最稳定的DNS服务器。`,
-	Run:   runBenchmark,
+	Use:     "dnspick",
+	Short:   "一个跨平台的 DNS 选优工具",
+	Long:    `通过对一组常用域名进行并发测试，为您的网络环境推荐最快、最稳定的DNS服务器。`,
+	Version: buildinfo.Version,
+	Run:     runBenchmark,
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "显示版本信息",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(buildinfo.String())
+	},
+}
+
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "检查并更新到最新版本",
+	Run:   runUpdate,
 }
 
 func init() {
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
+
 	flags := rootCmd.PersistentFlags()
 	flags.StringVarP(&domainsStr, "domains", "d", "", "自定义测试域名列表, 以逗号分隔（默认使用内置国内/国外域名）")
 	flags.IntVarP(&queriesPerDomain, "queries", "q", 3, "每个域名的查询次数")
 	flags.DurationVarP(&queryTimeout, "timeout", "t", 2*time.Second, "单次查询超时时间")
 	flags.IntVarP(&maxConcurrency, "concurrency", "c", 16, "同时测试的服务器数量上限")
 	flags.BoolVar(&noSystemDNS, "no-system-dns", false, "不检测、不测试当前系统默认 DNS")
+
+	rootCmd.AddCommand(versionCmd, updateCmd)
+}
+
+func runUpdate(cmd *cobra.Command, args []string) {
+	ctx, cancel := context.WithTimeout(context.Background(), updater.DefaultTimeout)
+	defer cancel()
+
+	fmt.Printf("当前版本: %s，正在检查更新...\n", buildinfo.Version)
+	latest, updated, err := updater.Update(ctx, buildinfo.Version)
+	if err != nil {
+		fmt.Println("更新失败:", err)
+		os.Exit(1)
+	}
+	if !updated {
+		fmt.Printf("已是最新版本 (%s)。\n", latest)
+		return
+	}
+	fmt.Printf("✓ 已更新到 %s。\n", latest)
 }
 
 func runBenchmark(cmd *cobra.Command, args []string) {

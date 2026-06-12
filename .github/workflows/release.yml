@@ -42,7 +42,13 @@ jobs:
             ARCHIVE_NAME="${BINARY_BASE_NAME}.tar.gz"
           fi
 
-          go build -ldflags="-s -w" -o "${BINARY_FINAL_NAME}" .
+          PKG="github.com/${{ github.repository }}/internal/buildinfo"
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -trimpath \
+            -ldflags="-s -w -X ${PKG}.Version=${VERSION} -X ${PKG}.Commit=${COMMIT} -X ${PKG}.Date=${DATE}" \
+            -o "${BINARY_FINAL_NAME}" .
 
           if [ "${GOOS}" = "windows" ]; then
             7z a "${ARCHIVE_NAME}" "${BINARY_FINAL_NAME}"

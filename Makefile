@@ -1,6 +1,15 @@
 APP_NAME := dnspick
 BUILD_DIR := builds
-LDFLAGS   := -s -w
+
+# 版本信息（编译期注入 internal/buildinfo）
+PKG     := github.com/palemoky/dnspick/internal/buildinfo
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE    := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -s -w \
+	-X $(PKG).Version=$(VERSION) \
+	-X $(PKG).Commit=$(COMMIT) \
+	-X $(PKG).Date=$(DATE)
 
 # 交叉编译目标平台：GOOS/GOARCH
 PLATFORMS := \
