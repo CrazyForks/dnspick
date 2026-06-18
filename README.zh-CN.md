@@ -145,6 +145,9 @@ dnspick -t 1s -c 8
 
 # 示例：强制使用英文界面
 dnspick --lang en
+
+# 示例：输出机器可读的 JSON（例如交给 jq 处理）
+dnspick --json | jq '.recommendation.top'
 ```
 
 | 参数              | 简写 | 默认值   | 描述                                                         |
@@ -155,6 +158,59 @@ dnspick --lang en
 | `--concurrency`   | `-c` | `16`     | 同时测试的服务器数量上限                                     |
 | `--no-system-dns` |      | `false`  | 不检测、不测试当前系统默认 DNS                               |
 | `--lang`          |      | `$LANG`  | 界面语言：`en` 或 `zh`（默认跟随系统 `LANG` 环境变量）       |
+| `--json`          |      | `false`  | 以机器可读的 JSON 输出到 stdout（不显示进度界面）            |
+
+---
+
+## 🤖 JSON 输出（用于自动化）
+
+加上 `--json` 即可在 **stdout** 得到单个 JSON 文档，适合脚本、爬虫和 CI 使用。状态信息写入 **stderr**，并且不显示实时进度界面，因此 stdout 是干净、可直接管道处理的 JSON 流（`dnspick --json | jq ...`）。
+
+```jsonc
+{
+  "schema": 1,                  // 输出结构版本号；不兼容变更时递增
+  "queries_per_domain": 3,
+  "servers_tested": 28,
+  "domains_tested": 20,
+  "results": [                  // 所有服务器，按综合评分从高到低排序
+    {
+      "rank": 1,                // 在本列表中的排名（从 1 开始）
+      "name": "Quad9 (UDP)",
+      "address": "9.9.9.9",
+      "is_system": false,       // 为你检测到的系统默认 DNS 时为 true
+      "avg_latency_ms": 4.235,  // 平均延迟（毫秒）
+      "success_rate": 1.0,      // 0.0–1.0
+      "successes": 60,
+      "total": 60,
+      "score": 236.10           // 综合评分（见下文）
+    }
+  ],
+  "recommendation": {
+    "top": [                    // 最多 3 个可靠推荐，附带其总排名
+      { "rank": 1, "name": "Quad9 (UDP)", "address": "9.9.9.9" }
+    ],
+    "system_dns": {             // 使用 --no-system-dns 或未检测到时省略
+      "name": "Current default DNS",
+      "address": "192.168.50.2",
+      "rank": 5,
+      "verdict": "good_enough", // best | good_enough | switch | all_failed
+      "should_switch": false    // 由 verdict 推导出的可操作布尔值
+    }
+  }
+}
+```
+
+**字段说明：**
+
+| 字段 | 描述 |
+| --- | --- |
+| `schema` | JSON 结构版本号。请在消费方据此做判断；任何不兼容变更都会递增该值。 |
+| `results[]` | 所有被测服务器，按 `score` 降序排列。 |
+| `avg_latency_ms` | 成功查询的平均延迟（毫秒，微秒精度）。 |
+| `success_rate` | 查询成功率，范围 `0.0`–`1.0`。 |
+| `recommendation.top[]` | 成功率超过 98% 的服务器，最多 3 个，按排名排序。无符合者时为空。 |
+| `recommendation.system_dns.verdict` | 稳定枚举：`best`（已最优）、`good_enough`（无需更换）、`switch`（存在明显更优的服务器）、`all_failed`（全部查询失败）。 |
+| `recommendation.system_dns.should_switch` | 便捷布尔值：当 `verdict` 为 `switch` 或 `all_failed` 时为 `true`。 |
 
 ---
 

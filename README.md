@@ -145,6 +145,9 @@ dnspick -t 1s -c 8
 
 # Example: force the Chinese UI
 dnspick --lang zh
+
+# Example: emit machine-readable JSON (e.g. pipe into jq)
+dnspick --json | jq '.recommendation.top'
 ```
 
 | Flag              | Short | Default       | Description                                                                 |
@@ -155,6 +158,59 @@ dnspick --lang zh
 | `--concurrency`   | `-c`  | `16`          | Maximum number of servers tested concurrently                               |
 | `--no-system-dns` |       | `false`       | Do not detect or test the current system default DNS                        |
 | `--lang`          |       | `$LANG`       | UI language: `en` or `zh` (defaults to the system `LANG` environment variable) |
+| `--json`          |       | `false`       | Output machine-readable JSON to stdout (suppresses the progress UI)         |
+
+---
+
+## 🤖 JSON output (for automation)
+
+Pass `--json` to get a single JSON document on **stdout**, suitable for scripts, crawlers and CI. Status messages are written to **stderr** and the live progress UI is suppressed, so stdout stays a clean, pipe-friendly JSON stream (`dnspick --json | jq ...`).
+
+```jsonc
+{
+  "schema": 1,                  // output schema version; bumped on breaking changes
+  "queries_per_domain": 3,
+  "servers_tested": 28,
+  "domains_tested": 20,
+  "results": [                  // every server, sorted by score (best first)
+    {
+      "rank": 1,                // 1-based rank in this list
+      "name": "Quad9 (UDP)",
+      "address": "9.9.9.9",
+      "is_system": false,       // true for your detected system default DNS
+      "avg_latency_ms": 4.235,  // average latency in milliseconds
+      "success_rate": 1.0,      // 0.0–1.0
+      "successes": 60,
+      "total": 60,
+      "score": 236.10           // composite score (see below)
+    }
+  ],
+  "recommendation": {
+    "top": [                    // up to 3 reliable picks, with their overall rank
+      { "rank": 1, "name": "Quad9 (UDP)", "address": "9.9.9.9" }
+    ],
+    "system_dns": {             // omitted when --no-system-dns or none detected
+      "name": "Current default DNS",
+      "address": "192.168.50.2",
+      "rank": 5,
+      "verdict": "good_enough", // best | good_enough | switch | all_failed
+      "should_switch": false    // actionable boolean derived from verdict
+    }
+  }
+}
+```
+
+**Field notes:**
+
+| Field | Description |
+| --- | --- |
+| `schema` | Version of the JSON structure. Guard on it in your consumers; it is bumped on any backward-incompatible change. |
+| `results[]` | All tested servers, sorted by `score` descending. |
+| `avg_latency_ms` | Average successful-query latency in milliseconds (microsecond precision). |
+| `success_rate` | Fraction of successful queries, `0.0`–`1.0`. |
+| `recommendation.top[]` | Up to 3 servers with a success rate above 98%, in ranked order. Empty when none qualify. |
+| `recommendation.system_dns.verdict` | Stable enum: `best` (already optimal), `good_enough` (keep it), `switch` (a clearly better server exists), `all_failed` (every query failed). |
+| `recommendation.system_dns.should_switch` | Convenience boolean: `true` when `verdict` is `switch` or `all_failed`. |
 
 ---
 
