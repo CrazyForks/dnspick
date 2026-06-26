@@ -2,11 +2,22 @@ package dnsbench
 
 import (
 	"cmp"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 )
+
+// unreachableFailStreak is the number of consecutive failed queries (the warm-up
+// counts as the first strike) after which a server is declared unreachable: the
+// remaining queries are then recorded as failures immediately instead of each
+// waiting out the full timeout. This stops a dead server — e.g. a DoH3 endpoint
+// on a network that blocks QUIC — from dominating the total run time.
+const unreachableFailStreak = 5
+
+// errUnreachable marks the queries skipped after a server is ruled unreachable.
+var errUnreachable = errors.New("server unreachable; remaining queries skipped")
 
 // Options controls a single benchmark run.
 type Options struct {
@@ -102,23 +113,46 @@ func Run(opts Options, progress func(domain string)) []Result {
 }
 
 // benchmarkServer runs all queries sequentially against a single server.
-// It first does one warm-up query (excluded from the results) so that DoT/DoH
-// establish their connections and the server hostname resolution is cached,
-// bringing each protocol's measurement into a steady, comparable state.
 func benchmarkServer(server Server, opts Options, ch chan<- queryResult, progress func(domain string)) {
 	q, closeFn := newQuerier(server, opts.Timeout)
 	defer closeFn()
+	runQueries(server, q, opts, ch, progress)
+}
 
-	// Warm-up (result discarded).
+// runQueries drives the warm-up and the measured queries for a single server
+// using the provided querier. It first does one warm-up query (excluded from the
+// results) so that DoT/DoH/DoH3 establish their connections and the server
+// hostname resolution is cached, bringing each protocol's measurement into a
+// steady, comparable state. Once a server has failed unreachableFailStreak
+// queries in a row it is declared unreachable and the remaining queries are
+// recorded as failures without paying the per-query timeout.
+func runQueries(server Server, q querier, opts Options, ch chan<- queryResult, progress func(domain string)) {
+	// Warm-up (result discarded). A failed warm-up is the first strike toward the
+	// unreachable check below.
+	streak := 0
 	if len(opts.Domains) > 0 {
-		_, _ = q(opts.Domains[0].Name)
+		if _, err := q(opts.Domains[0].Name); err != nil {
+			streak++
+		}
 	}
 
+	unreachable := false
 	for _, domain := range opts.Domains {
 		for range opts.Queries {
+			if unreachable {
+				ch <- queryResult{server: server, err: errUnreachable}
+				progress(domain.Name)
+				continue
+			}
 			d, err := q(domain.Name)
 			ch <- queryResult{server: server, duration: d, err: err}
 			progress(domain.Name)
+			if err != nil {
+				streak++
+				unreachable = streak >= unreachableFailStreak
+			} else {
+				streak = 0
+			}
 		}
 	}
 }

@@ -28,6 +28,44 @@ func TestParseDomainsEmpty(t *testing.T) {
 	}
 }
 
+func TestRunQueriesEarlyAbort(t *testing.T) {
+	domains := []Domain{{Name: "a.com"}, {Name: "b.com"}, {Name: "c.com"}}
+	opts := Options{Domains: domains, Queries: 4} // 1 warm-up + 12 measured
+	calls := 0
+	q := func(string) (time.Duration, error) {
+		calls++
+		return time.Millisecond, errors.New("boom")
+	}
+	ch := make(chan queryResult, len(domains)*opts.Queries)
+	runQueries(Server{Name: "X"}, q, opts, ch, func(string) {})
+	close(ch)
+
+	// Every measured query must still be reported so the progress UI reaches 100%.
+	if got := len(ch); got != len(domains)*opts.Queries {
+		t.Fatalf("emitted %d results, want %d", got, len(domains)*opts.Queries)
+	}
+	// The querier stops being called once the unreachable streak is reached:
+	// warm-up (1) + (unreachableFailStreak-1) measured queries.
+	if calls != unreachableFailStreak {
+		t.Errorf("querier called %d times, want %d (early abort)", calls, unreachableFailStreak)
+	}
+}
+
+func TestRunQueriesAllSuccess(t *testing.T) {
+	domains := []Domain{{Name: "a.com"}, {Name: "b.com"}}
+	opts := Options{Domains: domains, Queries: 3}
+	calls := 0
+	q := func(string) (time.Duration, error) { calls++; return time.Millisecond, nil }
+	ch := make(chan queryResult, len(domains)*opts.Queries)
+	runQueries(Server{Name: "X"}, q, opts, ch, func(string) {})
+	close(ch)
+
+	// A healthy server is never aborted: 1 warm-up + every measured query runs.
+	if want := 1 + len(domains)*opts.Queries; calls != want {
+		t.Errorf("querier called %d times, want %d", calls, want)
+	}
+}
+
 func TestAggregateResults(t *testing.T) {
 	srv := Server{Name: "X", Address: "1.2.3.4", Protocol: UDP}
 	ch := make(chan queryResult, 3)
