@@ -198,10 +198,15 @@ func isInternalDNS(addr string) bool {
 
 // displayAddress renders a server address for human-facing output. DoT servers
 // are shown with a tls:// scheme so users can tell the protocol apart from plain
-// UDP, mirroring the https:// already carried by DoH addresses.
+// UDP, mirroring the https:// already carried by DoH addresses. DoH3 servers
+// reuse a plain https:// endpoint, so they are shown with an h3:// scheme to
+// distinguish them from HTTP/1.1+2 DoH.
 func displayAddress(r dnsbench.Result) string {
-	if r.Protocol == dnsbench.DOT {
+	switch r.Protocol {
+	case dnsbench.DOT:
 		return "tls://" + r.Address
+	case dnsbench.DOH3:
+		return "h3://" + strings.TrimPrefix(r.Address, "https://")
 	}
 	return r.Address
 }

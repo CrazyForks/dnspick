@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/quic-go/quic-go/http3"
 )
 
 // querier performs a single query for a domain and returns how long it took.
@@ -43,6 +44,18 @@ func newQuerier(server Server, timeout time.Duration) (querier, func()) {
 			return time.Since(start), err
 		}
 		return q, client.CloseIdleConnections
+
+	case DOH3:
+		// HTTP/3 (QUIC) transport. The endpoint is a regular https:// URL and the
+		// wire-format query is identical to DoH; only the transport differs.
+		rt := &http3.Transport{}
+		client := &http.Client{Timeout: timeout, Transport: rt}
+		q := func(domain string) (time.Duration, error) {
+			start := time.Now()
+			err := dohQuery(client, server.Address, domain)
+			return time.Since(start), err
+		}
+		return q, func() { rt.Close() }
 
 	default:
 		q := func(domain string) (time.Duration, error) {

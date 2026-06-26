@@ -12,14 +12,14 @@ Pick the DNS that fits you
 
 </div>
 
-`dnspick` (**DNS** + **pick**) is a cross-platform command-line tool. It concurrently benchmarks a set of popular and custom DNS servers (over UDP, DoT and DoH) by repeatedly querying a list of common domains, then scores them intelligently from **average latency** and **success rate**. It also folds in the default DNS you are currently using for comparison and gives a recommendation at the end.
+`dnspick` (**DNS** + **pick**) is a cross-platform command-line tool. It concurrently benchmarks a set of popular and custom DNS servers (over UDP, DoT, DoH and DoH3) by repeatedly querying a list of common domains, then scores them intelligently from **average latency** and **success rate**. It also folds in the default DNS you are currently using for comparison and gives a recommendation at the end.
 
 ---
 
 ## Features
 
 *   **Cross-platform**: Runs on Windows, macOS, Linux, Raspberry Pi (ARM/ARM64) and other mainstream platforms.
-*   **Multi-protocol**: Tests plain UDP DNS, DNS-over-TLS (DoT) and DNS-over-HTTPS (DoH, RFC 8484 wire-format) side by side.
+*   **Multi-protocol**: Tests plain UDP DNS, DNS-over-TLS (DoT), DNS-over-HTTPS (DoH, RFC 8484 wire-format) and DNS-over-HTTP/3 (DoH3, over QUIC) side by side.
 *   **More accurate measurement**: Reuses one connection per server and bounds concurrency to avoid requests contending with each other and distorting latency; DoT/DoH are warmed up before timing.
 *   **Composite score**: More than just a speed test! Combines **average latency** and **success rate** into a single score (see [Scoring](#-how-is-the-composite-score-computed)) and recommends the Top 3.
 *   **Detects your current DNS**: Automatically probes the system default DNS you are using (ISP/router), includes it in the comparison and gives an optimization suggestion.
@@ -153,6 +153,7 @@ dnspick --json | jq '.recommendation.top'
 | Flag              | Short | Default       | Description                                                                 |
 | ----------------- | ----- | ------------- | --------------------------------------------------------------------------- |
 | `--domains`       | `-d`  | built-in list | Comma-separated custom domains to test (deduplicated); falls back to the built-in domestic/foreign list |
+| `--servers`       | `-s`  | built-in list | Comma-separated custom DNS servers to test; protocol is inferred from the scheme (`1.1.1.1` → UDP, `tls://host` → DoT, `https://host/dns-query` → DoH, `h3://host/dns-query` → DoH3) |
 | `--queries`       | `-q`  | `3`           | Number of queries per domain                                                |
 | `--timeout`       | `-t`  | `2s`          | Timeout per query                                                           |
 | `--concurrency`   | `-c`  | `16`          | Maximum number of servers tested concurrently                               |
@@ -177,7 +178,7 @@ Pass `--json` to get a single JSON document on **stdout**, suitable for scripts,
       "rank": 1,                // 1-based rank in this list
       "name": "Quad9 (UDP)",
       "address": "9.9.9.9",
-      "protocol": "udp",        // udp | dot | doh
+      "protocol": "udp",        // udp | dot | doh | doh3
       "is_system": false,       // true for your detected system default DNS
       "avg_latency_ms": 4.235,  // average latency in milliseconds
       "success_rate": 1.0,      // 0.0–1.0
@@ -213,7 +214,7 @@ Pass `--json` to get a single JSON document on **stdout**, suitable for scripts,
 | `recommendation.top[]` | Up to 3 servers with a success rate above 98%, in ranked order. Empty when none qualify. |
 | `recommendation.system_dns.verdict` | Stable enum: `best` (already optimal), `good_enough` (keep it), `switch` (a clearly better server exists), `all_failed` (every query failed). |
 | `recommendation.system_dns.is_internal_dns` | `true` when the system DNS is a private (RFC 1918/4193) or loopback resolver; switching to an external DNS may break internal hostname resolution. |
-| `protocol` | Transport for the server: `udp`, `dot` (DNS-over-TLS) or `doh` (DNS-over-HTTPS). DoT addresses are shown as `tls://host` in the text report. |
+| `protocol` | Transport for the server: `udp`, `dot` (DNS-over-TLS), `doh` (DNS-over-HTTPS) or `doh3` (DNS-over-HTTP/3). DoT addresses are shown as `tls://host` and DoH3 as `h3://host` in the text report. |
 | `recommendation.system_dns.should_switch` | Convenience boolean: `true` when `verdict` is `switch` or `all_failed`. |
 
 ---

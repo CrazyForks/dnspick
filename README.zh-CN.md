@@ -12,14 +12,14 @@
 
 </div>
 
-`dnspick`（**DNS** + **pick**）是一个跨平台命令行工具：它并发基准测试一批主流及自定义 DNS 服务器（涵盖 UDP、DoT、DoH），对一组常用的国内/国外域名反复查询，结合**平均延迟**与**成功率**智能评分；同时把你当前正在用的默认 DNS 一并纳入对比，最后给出建议。
+`dnspick`（**DNS** + **pick**）是一个跨平台命令行工具：它并发基准测试一批主流及自定义 DNS 服务器（涵盖 UDP、DoT、DoH、DoH3），对一组常用的国内/国外域名反复查询，结合**平均延迟**与**成功率**智能评分；同时把你当前正在用的默认 DNS 一并纳入对比，最后给出建议。
 
 ---
 
 ## 功能特性
 
 *   **跨平台支持**: 完美运行于 Windows, macOS, Linux, Raspberry Pi (ARM/ARM64) 等主流平台。
-*   **多协议支持**: 同时测试传统 UDP DNS、DNS-over-TLS (DoT) 和 DNS-over-HTTPS (DoH，RFC 8484 标准 wire-format)。
+*   **多协议支持**: 同时测试传统 UDP DNS、DNS-over-TLS (DoT)、DNS-over-HTTPS (DoH，RFC 8484 标准 wire-format) 和 DNS-over-HTTP/3 (DoH3，基于 QUIC)。
 *   **测量更准**: 每台服务器复用连接、限制并发，避免大量请求互相争抢导致延迟失真；DoT/DoH 预热后再计时。
 *   **综合评分**: 不只是测速！结合**平均延迟**与**成功率**给出综合评分（详见[评分说明](#-综合评分是怎么算的)），并推荐 Top 3。
 *   **检测当前 DNS**: 自动探测你正在使用的系统默认 DNS（运营商/路由器）一并参与对比，并给出优化建议。
@@ -153,6 +153,7 @@ dnspick --json | jq '.recommendation.top'
 | 参数              | 简写 | 默认值   | 描述                                                         |
 | ----------------- | ---- | -------- | ------------------------------------------------------------ |
 | `--domains`       | `-d` | 内置列表 | 自定义测试域名列表，以逗号分隔（自动去重）；不指定则使用内置的国内/国外域名 |
+| `--servers`       | `-s` | 内置列表 | 自定义 DNS 服务器列表，以逗号分隔；协议按 scheme 自动推断（`1.1.1.1` → UDP，`tls://host` → DoT，`https://host/dns-query` → DoH，`h3://host/dns-query` → DoH3） |
 | `--queries`       | `-q` | `3`      | 每个域名的查询次数                                           |
 | `--timeout`       | `-t` | `2s`     | 单次查询超时时间                                             |
 | `--concurrency`   | `-c` | `16`     | 同时测试的服务器数量上限                                     |
@@ -177,7 +178,7 @@ dnspick --json | jq '.recommendation.top'
       "rank": 1,                // 在本列表中的排名（从 1 开始）
       "name": "Quad9 (UDP)",
       "address": "9.9.9.9",
-      "protocol": "udp",        // udp | dot | doh
+      "protocol": "udp",        // udp | dot | doh | doh3
       "is_system": false,       // 为你检测到的系统默认 DNS 时为 true
       "avg_latency_ms": 4.235,  // 平均延迟（毫秒）
       "success_rate": 1.0,      // 0.0–1.0
@@ -213,7 +214,7 @@ dnspick --json | jq '.recommendation.top'
 | `recommendation.top[]` | 成功率超过 98% 的服务器，最多 3 个，按排名排序。无符合者时为空。 |
 | `recommendation.system_dns.verdict` | 稳定枚举：`best`（已最优）、`good_enough`（无需更换）、`switch`（存在明显更优的服务器）、`all_failed`（全部查询失败）。 |
 | `recommendation.system_dns.is_internal_dns` | 系统 DNS 为内网（RFC 1918/4193）或回环解析器时为 `true`；此时切换到外部 DNS 可能导致内部域名无法解析。 |
-| `protocol` | 服务器的传输协议：`udp`、`dot`（DNS-over-TLS）或 `doh`（DNS-over-HTTPS）。文本报告中 DoT 地址会显示为 `tls://host`。 |
+| `protocol` | 服务器的传输协议：`udp`、`dot`（DNS-over-TLS）、`doh`（DNS-over-HTTPS）或 `doh3`（DNS-over-HTTP/3）。文本报告中 DoT 地址显示为 `tls://host`，DoH3 显示为 `h3://host`。 |
 | `recommendation.system_dns.should_switch` | 便捷布尔值：当 `verdict` 为 `switch` 或 `all_failed` 时为 `true`。 |
 
 ---
