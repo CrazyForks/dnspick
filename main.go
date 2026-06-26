@@ -18,6 +18,7 @@ import (
 
 var (
 	domainsStr       string
+	serversStr       string
 	queriesPerDomain int
 	queryTimeout     time.Duration
 	maxConcurrency   int
@@ -60,6 +61,7 @@ func setup() {
 
 	flags := rootCmd.PersistentFlags()
 	flags.StringVarP(&domainsStr, "domains", "d", "", m.FlagDomains)
+	flags.StringVarP(&serversStr, "servers", "s", "", m.FlagServers)
 	flags.IntVarP(&queriesPerDomain, "queries", "q", 3, m.FlagQueries)
 	flags.DurationVarP(&queryTimeout, "timeout", "t", 2*time.Second, m.FlagTimeout)
 	flags.IntVarP(&maxConcurrency, "concurrency", "c", 16, m.FlagConcurrency)
@@ -101,8 +103,15 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s", m.ErrNoDomains)
 	}
 
-	// Servers: built-in list + (unless disabled) the system default DNS.
+	// Servers: the custom list when -s is given, otherwise the built-in list;
+	// in both cases the system default DNS is appended unless disabled.
 	servers := dnsbench.DefaultServers
+	if cmd.Flags().Changed("servers") {
+		servers = dnsbench.ParseServers(serversStr)
+		if len(servers) == 0 {
+			return fmt.Errorf("%s", m.ErrNoServers)
+		}
+	}
 	if !noSystemDNS {
 		if sys := dnsbench.DetectSystemDNS(m.SystemDNSName, m.SystemDNSNameN); len(sys) > 0 {
 			servers = append(append([]dnsbench.Server{}, servers...), sys...)

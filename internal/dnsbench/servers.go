@@ -3,14 +3,20 @@
 // contains no command-line or terminal presentation logic.
 package dnsbench
 
+import (
+	"net/url"
+	"strings"
+)
+
 // Protocol identifies the DNS transport used by a server.
 type Protocol string
 
 // Supported protocols.
 const (
-	UDP Protocol = "udp"
-	DOT Protocol = "dot"
-	DOH Protocol = "doh"
+	UDP  Protocol = "udp"
+	DOT  Protocol = "dot"
+	DOH  Protocol = "doh"
+	DOH3 Protocol = "doh3" // DNS-over-HTTPS carried over HTTP/3 (QUIC)
 )
 
 // Server describes a DNS server to be tested.
@@ -28,8 +34,6 @@ const (
 	CategoryForeign  = "foreign"
 	CategoryCustom   = "custom"
 )
-
-
 
 // Domain is a test domain with its category.
 type Domain struct{ Name, Category string }
@@ -67,6 +71,81 @@ var DefaultServers = []Server{
 	{Name: "Cloudflare (DoH)", Address: "https://cloudflare-dns.com/dns-query", Protocol: DOH},
 	{Name: "Google (DoH)", Address: "https://dns.google/dns-query", Protocol: DOH},
 	{Name: "Quad9 (DoH)", Address: "https://dns.quad9.net/dns-query", Protocol: DOH},
+
+	// DoH3 (DNS-over-HTTP/3). Same RFC 8484 /dns-query endpoint, carried over QUIC.
+	{Name: "AliDNS (DoH3)", Address: "https://dns.alidns.com/dns-query", Protocol: DOH3},
+	{Name: "Cloudflare (DoH3)", Address: "https://cloudflare-dns.com/dns-query", Protocol: DOH3},
+	{Name: "Google (DoH3)", Address: "https://dns.google/dns-query", Protocol: DOH3},
+}
+
+// ParseServers parses a comma-separated custom server list, inferring each
+// server's protocol from its URL scheme, preserving input order and skipping
+// duplicates:
+//
+//	h3://host/path    -> DoH3 (rewritten to https:// for the request)
+//	https://host/path -> DoH
+//	tls://host        -> DoT (scheme stripped; host used for TLS SNI)
+//	host or IP        -> UDP
+//
+// Entries that cannot be parsed are skipped.
+func ParseServers(raw string) []Server {
+	seen := make(map[string]struct{})
+	var servers []Server
+	for entry := range strings.SplitSeq(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if _, ok := seen[entry]; ok {
+			continue
+		}
+		seen[entry] = struct{}{}
+		if s, ok := parseServer(entry); ok {
+			servers = append(servers, s)
+		}
+	}
+	return servers
+}
+
+// parseServer turns a single user-supplied entry into a Server.
+func parseServer(entry string) (Server, bool) {
+	switch {
+	case strings.HasPrefix(entry, "h3://"):
+		// HTTP/3 transport requires an https URL; rewrite the scheme but keep
+		// the rest of the endpoint intact.
+		addr := "https://" + strings.TrimPrefix(entry, "h3://")
+		return Server{Name: customName(hostOf(addr), DOH3), Address: addr, Protocol: DOH3}, true
+
+	case strings.HasPrefix(entry, "https://"):
+		return Server{Name: customName(hostOf(entry), DOH), Address: entry, Protocol: DOH}, true
+
+	case strings.HasPrefix(entry, "tls://"):
+		host := strings.TrimPrefix(entry, "tls://")
+		return Server{Name: customName(host, DOT), Address: host, Protocol: DOT}, true
+
+	case strings.HasPrefix(entry, "udp://"):
+		host := strings.TrimPrefix(entry, "udp://")
+		return Server{Name: customName(host, UDP), Address: host, Protocol: UDP}, true
+
+	default:
+		return Server{Name: customName(entry, UDP), Address: entry, Protocol: UDP}, true
+	}
+}
+
+// hostOf extracts the host portion of an https URL, falling back to the raw
+// string when it cannot be parsed.
+func hostOf(rawURL string) string {
+	if u, err := url.Parse(rawURL); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return rawURL
+}
+
+// customName builds a display name for a user-supplied server, e.g.
+// "dns.google (DoT)".
+func customName(host string, p Protocol) string {
+	label := map[Protocol]string{UDP: "UDP", DOT: "DoT", DOH: "DoH", DOH3: "DoH3"}[p]
+	return host + " (" + label + ")"
 }
 
 // DefaultDomains is the built-in list of test domains (a balanced selection per category, deduplicated across same-company domains).

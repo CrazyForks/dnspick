@@ -28,6 +28,7 @@ type Messages struct {
 
 	// Flag usages.
 	FlagDomains     string
+	FlagServers     string
 	FlagQueries     string
 	FlagTimeout     string
 	FlagConcurrency string
@@ -43,6 +44,7 @@ type Messages struct {
 
 	// benchmark run.
 	ErrNoDomains    string
+	ErrNoServers    string
 	BenchStarting   string // "...%d DNS servers ... %d domains...\n\n"
 	ResultsHeader   string
 	RecommendHeader string
@@ -80,6 +82,7 @@ var en = &Messages{
 	CmdUpdateShort:  "Check for and update to the latest version",
 
 	FlagDomains:     "Comma-separated custom domains to test (defaults to the built-in domestic/foreign list)",
+	FlagServers:     "Comma-separated custom DNS servers to test, e.g. \"1.1.1.1, tls://dns.google, https://dns.google/dns-query, h3://cloudflare-dns.com/dns-query\" (defaults to the built-in list)",
 	FlagQueries:     "Number of queries per domain",
 	FlagTimeout:     "Timeout per query",
 	FlagConcurrency: "Maximum number of servers tested concurrently",
@@ -93,6 +96,7 @@ var en = &Messages{
 	UpdateDone:     "✓ Updated to %s.\n",
 
 	ErrNoDomains:    "error: no valid domains to test.",
+	ErrNoServers:    "error: no valid servers to test.",
 	BenchStarting:   "dnspick: benchmarking %d DNS servers against %d domains...\n\n",
 	ResultsHeader:   "\n--- Benchmark Results ---",
 	RecommendHeader: "\n--- Top 3 Recommendations ---",
@@ -126,6 +130,7 @@ var zh = &Messages{
 	CmdUpdateShort:  "检查并更新到最新版本",
 
 	FlagDomains:     "自定义测试域名列表，以逗号分隔（默认使用内置国内/国外域名）",
+	FlagServers:     "自定义 DNS 服务器列表，以逗号分隔，例如 \"1.1.1.1, tls://dns.google, https://dns.google/dns-query, h3://cloudflare-dns.com/dns-query\"（默认使用内置列表）",
 	FlagQueries:     "每个域名的查询次数",
 	FlagTimeout:     "单次查询超时时间",
 	FlagConcurrency: "同时测试的服务器数量上限",
@@ -139,6 +144,7 @@ var zh = &Messages{
 	UpdateDone:     "✓ 已更新到 %s。\n",
 
 	ErrNoDomains:    "错误: 没有有效的测试域名。",
+	ErrNoServers:    "错误: 没有有效的测试服务器。",
 	BenchStarting:   "DNS 选优工具: 开始对 %d 个 DNS 服务器、%d 个域名进行综合基准测试...\n\n",
 	ResultsHeader:   "\n--- 综合测试结果 ---",
 	RecommendHeader: "\n--- 最佳 DNS 推荐 (Top 3) ---",
