@@ -75,6 +75,9 @@ type Messages struct {
 	CatCustom      string
 	SystemDNSName  string // single system DNS
 	SystemDNSNameN string // "Current default DNS %d"
+
+	// Windows double-click: pause before the console window closes.
+	PressEnterToExit string
 }
 
 var en = &Messages{
@@ -125,6 +128,8 @@ var en = &Messages{
 	CatCustom:      "Custom",
 	SystemDNSName:  "Current default DNS",
 	SystemDNSNameN: "Current default DNS %d",
+
+	PressEnterToExit: "\nPress Enter to exit...",
 }
 
 var zh = &Messages{
@@ -175,6 +180,8 @@ var zh = &Messages{
 	CatCustom:      "自定义",
 	SystemDNSName:  "当前默认 DNS",
 	SystemDNSNameN: "当前默认 DNS %d",
+
+	PressEnterToExit: "\n按回车键退出...",
 }
 
 // active is the currently selected catalog. Defaults to English so that code

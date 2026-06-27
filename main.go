@@ -12,6 +12,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/palemoky/dnspick/internal/buildinfo"
+	"github.com/palemoky/dnspick/internal/console"
 	"github.com/palemoky/dnspick/internal/dnsbench"
 	"github.com/palemoky/dnspick/internal/i18n"
 	"github.com/palemoky/dnspick/internal/ui"
@@ -231,8 +232,19 @@ func main() {
 	i18n.Set(i18n.Detect(langFromArgs(os.Args[1:])))
 	setup()
 
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	if err != nil {
 		fmt.Println(err)
+	}
+
+	// On Windows a double-click (or a launcher like Listary) gives the process
+	// its own console that closes the moment it exits, so the user never sees
+	// the results. Pause in that case, but not when --json is piped somewhere.
+	if !jsonOutput {
+		console.PauseOnExit()
+	}
+
+	if err != nil {
 		os.Exit(1)
 	}
 }

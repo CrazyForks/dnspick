@@ -12,7 +12,7 @@ Pick the DNS that fits you
 
 </div>
 
-`dnspick` (**DNS** + **pick**) is a cross-platform command-line tool. It concurrently benchmarks a set of popular and custom DNS servers (over UDP, DoT, DoH and DoH3) by repeatedly querying a list of common domains, then scores them intelligently from **average latency** and **success rate**. It also folds in the default DNS you are currently using for comparison and gives a recommendation at the end.
+`dnspick` is a cross-platform command-line tool. It concurrently benchmarks a set of popular and custom DNS servers (over UDP, DoT, DoH and DoH3) by repeatedly querying a list of common domains, then scores them intelligently from **average latency** and **success rate**. It also folds in the default DNS you are currently using for comparison and gives a recommendation at the end.
 
 ---
 
